@@ -166,7 +166,7 @@ def trainModel(screen):
     features, types = featuresFolder(screen)
     screen.progressBar.destroy()
     X_train, x_test, y_train, y_test = train_test_split(
-        features, types, test_size=.2)
+        features, types, test_size=.25)
 
     classifier = svm.SVC(kernel="linear", probability=True,
                          gamma="scale", C=1.0)
