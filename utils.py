@@ -42,6 +42,32 @@ def glcmEntropy(glcm):
     return entropy
 
 
+def showFeatures(image, screen):
+    """
+    It takes an image and returns the energy, homogeneity, and entropy of the image
+
+    :param image: The image to be analyzed
+    :param screen: The screen object that contains the image
+    """
+    start = time()
+
+    numpyImage = np.array(image, dtype=np.uint8)
+    glcm = graycomatrix(numpyImage, distances=[
+        1, 2, 4, 8, 16], angles=[0, pi/4, pi/2, 3*pi/4], levels=256)
+    energy = graycoprops(glcm, 'energy')
+    homogeneity = graycoprops(glcm, 'homogeneity')
+    entropy = glcmEntropy(glcm)
+
+    end = time()
+
+    info = ""
+    info += f"\nEnergy: {round(energy[0][0],2)}\n"
+    info += f"Homogeneity: {round(homogeneity[0][0],2)}\n"
+    info += f"Entropy: {round(entropy[0],2)}"
+    info += f"\nTime: {round(end - start, 2)}"
+    screen.text.set(info)
+
+
 def computeFeatures(image):
     """
     It takes an image, converts it to a numpy array, calculates the grey level co-occurrence matrix, and
@@ -163,13 +189,13 @@ def trainModel(screen):
     :return: The classifier is being returned.
     """
     start = time()
-    features, types = featuresFolder(screen)
+    X, y = featuresFolder(screen)
     screen.progressBar.destroy()
     X_train, x_test, y_train, y_test = train_test_split(
-        features, types, test_size=.25)
+        X, y, test_size=.25)
 
     classifier = svm.SVC(kernel="linear", probability=True,
-                         gamma="scale", C=1.0)
+                         gamma="scale", C=1)
     screen.text.set("Training...")
     classifier.fit(X_train, y_train)
 
@@ -186,10 +212,10 @@ def trainModel(screen):
     info = ""
 
     info += f"{confusion}\n"
-    info += f"\nAccuracy: {accuracy}"
-    info += f"\nMean Sensibility: {meanSensibility}\n"
-    info += f"Specificity: {specificity}"
-    info += f"\nTime: {totalTime}"
+    info += f"\nAccuracy: {round(accuracy, 2)}"
+    info += f"\nMean Sensibility: {round(meanSensibility, 2)}\n"
+    info += f"Specificity: {round(specificity, 2)}"
+    info += f"\nTime: {round(totalTime, 2)}"
     screen.text.set(info)
 
     return classifier

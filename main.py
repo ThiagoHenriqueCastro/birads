@@ -6,16 +6,27 @@ from tkinter.ttk import Progressbar
 from PIL import Image, ImageTk, ImageOps
 import numpy as np
 
-from utils import trainModel, loadModel, saveModel, featuresFile
+from utils import trainModel, loadModel, saveModel, showFeatures, featuresFile
 
 
-defaultWidth = 300
-defaultHeight = 300
+defaultWidth = 200
+defaultHeight = 200
 
 minImageSize = 0
 maxImageSize = 5000
 
 selectionSize = 100
+
+
+class TextureWindow(tk.Toplevel):
+    def __init__(self, root):
+        super().__init__(root)
+        self.geometry("400x300")
+        self.frame = tk.Frame(self)
+        self.text = tk.StringVar()
+        self.label = tk.Label(self.frame, textvariable=self.text,)
+        self.label.pack(side=tk.TOP, fill=tk.X, expand=tk.YES)
+        self.frame.pack()
 
 
 class TrainWindow(tk.Toplevel):
@@ -94,6 +105,13 @@ class SelectionWindow(tk.Toplevel):
         self.equalizationOptions.add_command(
             label="Equalize", command=self.equalizeImage)
 
+        # TEXTURE MENU
+        self.textureOptions = tk.Menu(self.selectionMenu)
+        self.selectionMenu.add_cascade(
+            label="Texture", menu=self.textureOptions)
+        self.textureOptions.add_command(
+            label="Compute features", command=self.features)
+
         self.canvas = tk.Canvas(self, width=w, height=h)
         self.tkImage = ImageTk.PhotoImage(self.displayedImage)
         self.imageCanvas = self.canvas.create_image(
@@ -119,6 +137,9 @@ class SelectionWindow(tk.Toplevel):
 
         if self.equalization:
             self.displayedImage = ImageOps.equalize(self.displayedImage)
+            self.selectionMenu.entryconfig("Texture", state="disabled")
+        else:
+            self.selectionMenu.entryconfig("Texture", state="normal")
 
         self.tkImage = ImageTk.PhotoImage(self.displayedImage)
         self.imageCanvas = self.canvas.create_image(
@@ -133,11 +154,19 @@ class SelectionWindow(tk.Toplevel):
         self.rawImage = image
         self.reloadScreen()
 
+    def getFeatures(self, screen):
+        showFeatures(self.displayedImage, screen)
 
-class rootWindow:
+    def features(self):
+        textureWindow = TextureWindow(self)
+        start_new_thread(self.getFeatures, (textureWindow,))
+
+
+class RootWindow:
     def __init__(self):
         self.screen = tk.Tk()
         self.screen.geometry(f"{defaultWidth}x{defaultHeight}")
+        self.screen.minsize(defaultWidth, defaultHeight)
         self.screen.eval('tk::PlaceWindow . center')
         self.screen.title("BIRADS - PI")
 
@@ -155,6 +184,13 @@ class rootWindow:
             label="Reset Zoom", command=self.resetZoom)
         self.imageOptions.add_command(
             label="Select area", command=self.setSelection)
+
+        # TEXTURE MENU
+        self.textureOptions = tk.Menu(self.menubar)
+        self.menubar.add_cascade(
+            label="Texture", menu=self.textureOptions)
+        self.textureOptions.add_command(
+            label="Compute features", command=self.features)
 
         # CLASSIFIER MENU
 
@@ -185,6 +221,16 @@ class rootWindow:
 
         self.classifier = None
 
+        self.uploadFrame = tk.Frame(self.screen)
+        self.uploadFrame.pack(side=tk.BOTTOM, pady=50)
+
+        self.uploadIcon = Image.open("upload.png")
+        self.uploadIcon = self.uploadIcon.resize(size=(50, 50))
+        self.uploadIconTK = ImageTk.PhotoImage(self.uploadIcon)
+        self.uploadButton = tk.Button(
+            self.uploadFrame, image=self.uploadIconTK, command=self.loadImage)
+        self.uploadButton.pack(side=tk.LEFT)
+
         self.canvas = tk.Canvas(
             self.screen, width=defaultWidth, height=defaultHeight)
         self.canvas.pack()
@@ -212,6 +258,7 @@ class rootWindow:
         self.screen.geometry(f"{w}x{h}")
         self.canvas.config(width=w, height=h)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.uploadFrame.destroy()
 
     def zoom(self):
         sliderScreen = tk.Tk()
@@ -330,9 +377,16 @@ class rootWindow:
         prediction = self.classifier.predict(features)
         showinfo("Classification", f"BIRADS {prediction[0]}")
 
+    def getFeatures(self, screen):
+        showFeatures(self.rawImage, screen)
+
+    def features(self):
+        textureWindow = TextureWindow(self.screen)
+        start_new_thread(self.getFeatures, (textureWindow,))
+
 
 def main():
-    rootWindow()
+    RootWindow()
 
 
 if __name__ == '__main__':
