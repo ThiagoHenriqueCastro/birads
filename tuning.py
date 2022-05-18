@@ -9,7 +9,7 @@ import numpy as np
 from sklearn import svm
 from sklearn import model_selection
 from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split
 
 
 def loadModel():
@@ -133,7 +133,7 @@ def featuresFile(path=None, image=None):
     return features
 
 
-def featuresFolder(screen):
+def featuresFolder():
     """
     It reads each image from the imgs folder, and then it calls the featuresFile function to get the
     features of each image
@@ -153,9 +153,6 @@ def featuresFolder(screen):
                 features.append(featuresFile(file.path))
                 types.append(i)
                 imgCount += 1
-                screen.progressBar['value'] = int((imgCount/400)*100)
-                screen.update_idletasks()
-                screen.text.set(f"Generaring features...{imgCount}/400")
     return features, types
 
 
@@ -182,7 +179,7 @@ def computeMetrics(confusion):
     return (meanSensibility, specificity)
 
 
-def trainModel(screen):
+def trainModel():
     """
     It takes a screen as an argument, and returns a trained model
 
@@ -190,33 +187,17 @@ def trainModel(screen):
     :return: The classifier is being returned.
     """
     start = time()
-    X, y = featuresFolder(screen)
-    screen.progressBar.destroy()
+    X, y = featuresFolder()
     X_train, x_test, y_train, y_test = train_test_split(
         X, y, test_size=.25)
 
-    classifier = svm.SVC(
-        kernel="linear", C=0.01)
-    screen.text.set("Training...")
-    classifier.fit(X_train, y_train)
+    param_grid = {'C': [0.01, 0.1, 1, 10, 100], 'gamma': [
+        1, 0.1, 0.01, 0.001], 'kernel': ['rbf', 'poly', 'linear']}
 
-    y_prediction = classifier.predict(x_test)
-    accuracy = model_selection.cross_val_score(classifier, X, y, cv=10)
+    grid = GridSearchCV(svm.SVC(), param_grid, refit=True, verbose=3)
+    grid.fit(X_train, y_train)
 
-    confusion = confusion_matrix(y_test, y_prediction)
-    (meanSensibility, specificity) = computeMetrics(confusion)
+    print(grid.best_estimator_)
 
-    end = time()
 
-    totalTime = end - start
-
-    info = ""
-
-    info += f"{confusion}\n"
-    info += f"\nAccuracy: {round(accuracy.mean(), 2)}"
-    info += f"\nMean Sensibility: {round(meanSensibility, 2)}\n"
-    info += f"Specificity: {round(specificity, 2)}"
-    info += f"\nTime: {round(totalTime, 2)}"
-    screen.text.set(info)
-
-    return classifier
+trainModel()
