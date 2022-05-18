@@ -7,7 +7,8 @@ from skimage.feature import graycomatrix, graycoprops
 from skimage.measure import shannon_entropy
 import numpy as np
 from sklearn import svm
-from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn import model_selection
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
 
@@ -194,13 +195,13 @@ def trainModel(screen):
     X_train, x_test, y_train, y_test = train_test_split(
         X, y, test_size=.25)
 
-    classifier = svm.SVC(kernel="linear", probability=True,
-                         gamma="scale", C=1)
+    classifier = svm.SVC(
+        kernel="linear", C=0.01, gamma=1000)
     screen.text.set("Training...")
     classifier.fit(X_train, y_train)
 
     y_prediction = classifier.predict(x_test)
-    accuracy = accuracy_score(y_test, y_prediction)
+    accuracy = model_selection.cross_val_score(classifier, X, y, cv=10)
 
     confusion = confusion_matrix(y_test, y_prediction)
     (meanSensibility, specificity) = computeMetrics(confusion)
@@ -212,7 +213,7 @@ def trainModel(screen):
     info = ""
 
     info += f"{confusion}\n"
-    info += f"\nAccuracy: {round(accuracy, 2)}"
+    info += f"\nAccuracy: {round(accuracy.mean(), 2)}"
     info += f"\nMean Sensibility: {round(meanSensibility, 2)}\n"
     info += f"Specificity: {round(specificity, 2)}"
     info += f"\nTime: {round(totalTime, 2)}"
